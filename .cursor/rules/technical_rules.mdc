@@ -1,0 +1,188 @@
+---
+alwaysApply: true
+---
+
+# Technical Rules - Vibe Musics
+
+## Backend Structure (Flask + SQLAlchemy)
+
+### Project Root Structure
+```
+This project root directory/
+├── backend/             # Backend Flask application
+└── frontend/            # Frontend React application
+```
+
+### Core Files
+```
+backend/
+├── main.py              # Single Flask app entry point (run with: python main.py)
+├── database.py          # Database models and configuration
+├── config.py            # Environment configuration
+├── blueprints/          # API routes (one file per blueprint)
+│   ├── users.py
+│   └── ...
+├── utils/               # Helper functions
+│   ├── storage.py
+│   ├── helpers.py
+│   └── ...
+└── docs/                # API documentation
+    └── postman_collection.json
+```
+
+### Database Models
+
+- All models inherit from `db.Model`
+- Include `id`, `created_at`, `updated_at` in every model
+- Add `to_json()` method for API responses
+- Use proper relationships with foreign keys
+- Use Flask-Alembic for database migrations
+
+### API Routes
+
+- One blueprint per collection in `blueprints/` folder
+- All GET requests must be paginated
+- Support search and filtering on all list endpoints
+- Use JWT authentication with `@jwt_required()`
+- Return consistent JSON: `{"data": result, "message": "Success"}`
+- **MANDATORY: Update Postman collection** when creating or updating endpoints
+
+### JWT Authentication
+
+- **Always use string user IDs in JWT tokens** - Use `create_access_token(identity=str(user.id))` not `create_access_token(identity=user.id)`
+- **Convert JWT identity back to integer** - Use `int(get_jwt_identity())` when querying database
+- Include comprehensive JWT error handlers for expired, invalid, and missing tokens
+- JWT tokens return structured error responses matching API format: `{"error": "...", "message": "..."}`
+
+### API Documentation
+
+- **Always update `backend/docs/postman_collection.json`** when adding, modifying, or removing API endpoints
+- Include complete request examples with all required and optional fields
+- Provide sample request bodies for POST/PUT endpoints with realistic data
+- Include proper authentication headers for protected endpoints
+- Add descriptions for each endpoint explaining its purpose
+- Update collection variables if new configuration is needed
+- Test all endpoints in the collection after updates to ensure they work correctly
+
+### Configuration
+
+- Use environment variables with defaults in `config.py`
+- Never commit `.env` files
+- **Treat entire project as production-ready** - no development/production split
+- Always use PostgreSQL database URL from environment variables
+- **Backend runs on port 5002** (default Flask port 5000 conflicts with AirPlay)
+- `.env` file will be provided as replica of `sample.env` with actual values
+
+### Port Configuration
+
+- Backend Flask API: **Port 5002**
+- Frontend Vite dev server: **Port 5173** (Vite default)
+- Database: PostgreSQL (from DATABASE_URL environment variable)
+
+### Database Configuration
+
+- Always use PostgreSQL database from `DATABASE_URL` environment variable
+- No SQLite - production database only
+- Include PostgreSQL driver (`psycopg2-binary`) in requirements
+- Database URL format: `postgresql://username:password@host:port/database` (note: use `postgresql://` not `postgres://`)
+
+### Database Migrations
+
+- Use the custom migration script `backend/migrate.py` for all database migrations
+- **Never use Flask-Migrate commands directly** - always use the migration script
+- Migration script automatically creates and applies migrations in one step
+- Usage examples:
+  - `python migrate.py "Add new field to User model"` - Create and apply migration
+  - `python migrate.py --status` - Check migration status
+  - `python migrate.py --upgrade` - Apply pending migrations only
+  - `python migrate.py --help` - Show usage instructions
+
+### Dependency Management
+
+- When a new package is needed for backend, add it to `backend/requirements.txt`
+- **Do not install packages directly** - instead instruct user to re-install from requirements
+- Always specify exact versions in requirements.txt (e.g., `package==1.2.3`)
+- User should run `pip install -r backend/requirements.txt` after adding new dependencies
+
+### Environment Management
+
+- **Always run commands in conda environment named 'vcp'**
+- Before running any Python commands, ensure the vcp environment is activated: `conda activate vcp`
+- All backend development should be done within this conda environment
+- If environment doesn't exist, create it with: `conda create -n vcp python=3.11.3 -y`
+
+### Docker Configuration
+
+- Each service (frontend and backend) must have its own `Dockerfile`
+- Backend Dockerfile should be in `backend/Dockerfile`
+- Frontend Dockerfile should be in `frontend/Dockerfile`
+- Use multi-stage builds for production optimization
+- Include `.dockerignore` files to exclude unnecessary files
+
+## Frontend Structure (React + TypeScript + Next)
+
+- Use `npm create vite@latest frontend -- --template react-ts` to initialize the project
+- Follow standard Next project structure with organized folders for maintainability
+- Extend the default Next structure with additional folders as needed
+
+### Project Organization
+
+- Follow standard Next React TypeScript project structure
+- Add additional folders within `src/` for better organization:
+  - `components/` - Reusable UI components
+  - `pages/` - Page components
+  - `services/` - API calls and external integrations
+  - `types/` - TypeScript type definitions
+  - `hooks/` - Custom React hooks
+  - `context/` - React context providers
+  - `utils/` - Helper functions and utilities
+
+### Component Rules
+
+- Every component in its own folder
+- Use TypeScript interfaces for props
+- CSS Modules for styling
+- Export from `index.ts` files
+
+### API Integration
+
+- Centralized API service in `services/api.ts`
+- Use environment variables for API base URL
+- Handle loading states and errors consistently
+- Show loading indicators instead of "no items" messages
+
+### State Management
+
+- Use React Context for global state
+- Custom hooks for reusable logic
+- Local state with `useState` for component state
+
+## General Principles
+
+### Code Quality
+
+- Write clean, readable code
+- Use meaningful names
+- Add proper error handling
+- Follow established patterns
+- Keep code simple and easy to modify/understand
+
+### Security
+
+- Never commit API keys or secrets
+- Use environment variables
+- Validate all inputs
+- Implement proper authentication
+
+### Performance
+
+- Use React.memo for expensive components
+- Implement proper loading states
+- Optimize images and assets
+- Use code splitting for large apps
+
+### Development
+
+- Use consistent file naming conventions
+- Document complex logic
+- Follow the established project structure

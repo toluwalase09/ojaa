@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>API Connection Test</title>
+</head>
+<body>
+    <h1>API Connection Test</h1>
+    <div id="results"></div>
+    
+    <script>
+        const API_BASE_URL = 'https://lasherd-api-gateway.waitlistltd.com';
+        
+        async function testAPI() {
+            const results = document.getElementById('results');
+            
+            try {
+                // Test health endpoint
+                const healthResponse = await fetch(`${API_BASE_URL}/`);
+                const healthData = await healthResponse.json();
+                results.innerHTML += `<p>✅ Health Check: ${JSON.stringify(healthData)}</p>`;
+                
+                // Test auth profile endpoint (should return 401)
+                const authResponse = await fetch(`${API_BASE_URL}/api/auth/profile`);
+                const authData = await authResponse.json();
+                results.innerHTML += `<p>✅ Auth Profile (401 expected): ${JSON.stringify(authData)}</p>`;
+                
+                // Test registration endpoint
+                const registerResponse = await fetch(`${API_BASE_URL}/api/auth/register`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        email: 'test@example.com',
+                        password: 'TestPassword123!',
+                        password_confirmation: 'TestPassword123!',
+                        first_name: 'Test',
+                        last_name: 'User'
+                    })
+                });
+                const registerData = await registerResponse.json();
+                results.innerHTML += `<p>✅ Registration Test: ${JSON.stringify(registerData)}</p>`;
+                
+            } catch (error) {
+                results.innerHTML += `<p>❌ Error: ${error.message}</p>`;
+            }
+        }
+        
+        testAPI();
+    </script>
+</body>
+</html>

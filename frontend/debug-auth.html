@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Debug Authentication</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .test { margin: 10px 0; padding: 10px; border: 1px solid #ccc; }
+        .success { background-color: #d4edda; border-color: #c3e6cb; }
+        .error { background-color: #f8d7da; border-color: #f5c6cb; }
+        .info { background-color: #d1ecf1; border-color: #bee5eb; }
+    </style>
+</head>
+<body>
+    <h1>Authentication Debug Test</h1>
+    <div id="results"></div>
+    
+    <script>
+        const API_BASE_URL = 'https://lasherd-api-gateway.waitlistltd.com';
+        
+        async function runTests() {
+            const results = document.getElementById('results');
+            
+            // Test 1: Health Check
+            try {
+                const healthResponse = await fetch(`${API_BASE_URL}/`);
+                const healthData = await healthResponse.json();
+                results.innerHTML += `<div class="test success">✅ Health Check: ${JSON.stringify(healthData)}</div>`;
+            } catch (error) {
+                results.innerHTML += `<div class="test error">❌ Health Check Failed: ${error.message}</div>`;
+            }
+            
+            // Test 2: Auth Profile (should return 401)
+            try {
+                const authResponse = await fetch(`${API_BASE_URL}/api/auth/profile`);
+                const authData = await authResponse.json();
+                results.innerHTML += `<div class="test info">ℹ️ Auth Profile (401 expected): ${JSON.stringify(authData)}</div>`;
+            } catch (error) {
+                results.innerHTML += `<div class="test error">❌ Auth Profile Failed: ${error.message}</div>`;
+            }
+            
+            // Test 3: Registration
+            try {
+                const registerResponse = await fetch(`${API_BASE_URL}/api/auth/register`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        email: 'debug@example.com',
+                        password: 'DebugPassword123!',
+                        password_confirmation: 'DebugPassword123!',
+                        first_name: 'Debug',
+                        last_name: 'User'
+                    })
+                });
+                const registerData = await registerResponse.json();
+                results.innerHTML += `<div class="test ${registerResponse.ok ? 'success' : 'error'}">${registerResponse.ok ? '✅' : '❌'} Registration: ${JSON.stringify(registerData)}</div>`;
+            } catch (error) {
+                results.innerHTML += `<div class="test error">❌ Registration Failed: ${error.message}</div>`;
+            }
+            
+            // Test 4: Login
+            try {
+                const loginResponse = await fetch(`${API_BASE_URL}/api/auth/login`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        email: 'debug@example.com',
+                        password: 'DebugPassword123!'
+                    })
+                });
+                const loginData = await loginResponse.json();
+                results.innerHTML += `<div class="test ${loginResponse.ok ? 'success' : 'error'}">${loginResponse.ok ? '✅' : '❌'} Login: ${JSON.stringify(loginData)}</div>`;
+            } catch (error) {
+                results.innerHTML += `<div class="test error">❌ Login Failed: ${error.message}</div>`;
+            }
+        }
+        
+        runTests();
+    </script>
+</body>
+</html>

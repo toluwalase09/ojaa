@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lasherd Live Data Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .test-section {
+            margin-bottom: 30px;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        .success {
+            color: #10b981;
+            font-weight: bold;
+        }
+        .error {
+            color: #ef4444;
+            font-weight: bold;
+        }
+        .loading {
+            color: #f59e0b;
+        }
+        button {
+            background: #3b82f6;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #2563eb;
+        }
+        button:disabled {
+            background: #9ca3af;
+            cursor: not-allowed;
+        }
+        .data-display {
+            background: #f8fafc;
+            padding: 10px;
+            border-radius: 5px;
+            margin-top: 10px;
+            font-family: monospace;
+            white-space: pre-wrap;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚀 Lasherd Live Data Integration Test</h1>
+        <p>This page tests the connection between the frontend and backend API to fetch live market data from Polygon.io.</p>
+        
+        <div class="test-section">
+            <h3>1. Backend Health Check</h3>
+            <button onclick="testHealthCheck()">Test API Health</button>
+            <div id="health-result"></div>
+        </div>
+        
+        <div class="test-section">
+            <h3>2. Market Data Test</h3>
+            <button onclick="testMarketData()">Fetch Market Data</button>
+            <div id="market-result"></div>
+        </div>
+        
+        <div class="test-section">
+            <h3>3. Stock Quote Test</h3>
+            <button onclick="testStockQuote()">Get AAPL Quote</button>
+            <div id="quote-result"></div>
+        </div>
+        
+        <div class="test-section">
+            <h3>4. Market Indices Test</h3>
+            <button onclick="testIndices()">Get Market Indices</button>
+            <div id="indices-result"></div>
+        </div>
+        
+        <div class="test-section">
+            <h3>5. News Test</h3>
+            <button onclick="testNews()">Get Market News</button>
+            <div id="news-result"></div>
+        </div>
+        
+        <div class="test-section">
+            <h3>6. Complete Dashboard Data Test</h3>
+            <button onclick="testDashboardData()">Fetch All Dashboard Data</button>
+            <div id="dashboard-result"></div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE_URL = 'http://localhost:5002';
+        
+        async function makeRequest(endpoint, options = {}) {
+            try {
+                const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+                    headers: {
+                        'Content-Type': 'application/json',
+                        ...options.headers
+                    },
+                    ...options
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                return await response.json();
+            } catch (error) {
+                throw error;
+            }
+        }
+        
+        function displayResult(elementId, data, isError = false) {
+            const element = document.getElementById(elementId);
+            const className = isError ? 'error' : 'success';
+            element.innerHTML = `<div class="${className}">${data}</div>`;
+        }
+        
+        function displayData(elementId, data) {
+            const element = document.getElementById(elementId);
+            element.innerHTML = `<div class="data-display">${JSON.stringify(data, null, 2)}</div>`;
+        }
+        
+        async function testHealthCheck() {
+            try {
+                displayResult('health-result', 'Testing...', false);
+                const result = await makeRequest('/');
+                displayResult('health-result', `✅ Health check passed: ${result.message}`);
+            } catch (error) {
+                displayResult('health-result', `❌ Health check failed: ${error.message}`, true);
+            }
+        }
+        
+        async function testMarketData() {
+            try {
+                displayResult('market-result', 'Fetching market data...', false);
+                const result = await makeRequest('/api/market-data/overview');
+                displayData('market-result', result);
+            } catch (error) {
+                displayResult('market-result', `❌ Market data failed: ${error.message}`, true);
+            }
+        }
+        
+        async function testStockQuote() {
+            try {
+                displayResult('quote-result', 'Fetching AAPL quote...', false);
+                const result = await makeRequest('/api/market-data/quote/AAPL');
+                displayData('quote-result', result);
+            } catch (error) {
+                displayResult('quote-result', `❌ Stock quote failed: ${error.message}`, true);
+            }
+        }
+        
+        async function testIndices() {
+            try {
+                displayResult('indices-result', 'Fetching market indices...', false);
+                const result = await makeRequest('/api/market-data/indices');
+                displayData('indices-result', result);
+            } catch (error) {
+                displayResult('indices-result', `❌ Indices failed: ${error.message}`, true);
+            }
+        }
+        
+        async function testNews() {
+            try {
+                displayResult('news-result', 'Fetching market news...', false);
+                const result = await makeRequest('/api/market-data/news?limit=5');
+                displayData('news-result', result);
+            } catch (error) {
+                displayResult('news-result', `❌ News failed: ${error.message}`, true);
+            }
+        }
+        
+        async function testDashboardData() {
+            try {
+                displayResult('dashboard-result', 'Fetching complete dashboard data...', false);
+                
+                // Test multiple endpoints in parallel
+                const [stocksResponse, indicesResponse, newsResponse, overviewResponse] = await Promise.all([
+                    makeRequest('/api/market-data/quotes?symbols=AAPL,MSFT,GOOGL,AMZN,NVDA'),
+                    makeRequest('/api/market-data/indices'),
+                    makeRequest('/api/market-data/news?limit=5'),
+                    makeRequest('/api/market-data/overview')
+                ]);
+                
+                const dashboardData = {
+                    stocks: stocksResponse.data || [],
+                    indices: indicesResponse.data || [],
+                    news: newsResponse.data || [],
+                    overview: overviewResponse.data || {}
+                };
+                
+                displayData('dashboard-result', dashboardData);
+            } catch (error) {
+                displayResult('dashboard-result', `❌ Dashboard data failed: ${error.message}`, true);
+            }
+        }
+        
+        // Auto-run health check on page load
+        window.onload = function() {
+            testHealthCheck();
+        };
+    </script>
+</body>
+</html>
