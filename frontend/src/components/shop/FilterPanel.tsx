@@ -85,7 +85,7 @@ export function FilterPanel({
           <label className="flex items-center gap-3 cursor-pointer">
             <Checkbox
               checked={filters.hasVirtualTryOn ?? false}
-              onCheckedChange={(checked) => updateFilter("hasVirtualTryOn", checked || undefined)}
+              onCheckedChange={(checked) => updateFilter("hasVirtualTryOn", checked === true ? true : undefined)}
             />
             <span className="text-sm font-medium">Virtual Try-On Only</span>
             <Badge variant="secondary" className="text-[10px]">NEW</Badge>
@@ -238,21 +238,21 @@ export function FilterPanel({
               <label className="flex items-center gap-2 cursor-pointer">
                 <Checkbox
                   checked={filters.isOnSale ?? false}
-                  onCheckedChange={(checked) => updateFilter("isOnSale", checked || undefined)}
+                  onCheckedChange={(checked) => updateFilter("isOnSale", checked === true ? true : undefined)}
                 />
                 <span className="text-sm">On Sale</span>
               </label>
               <label className="flex items-center gap-2 cursor-pointer">
                 <Checkbox
                   checked={filters.isNew ?? false}
-                  onCheckedChange={(checked) => updateFilter("isNew", checked || undefined)}
+                  onCheckedChange={(checked) => updateFilter("isNew", checked === true ? true : undefined)}
                 />
                 <span className="text-sm">New Arrivals</span>
               </label>
               <label className="flex items-center gap-2 cursor-pointer">
                 <Checkbox
                   checked={filters.inStock ?? true}
-                  onCheckedChange={(checked) => updateFilter("inStock", checked ?? undefined)}
+                  onCheckedChange={(checked) => updateFilter("inStock", checked === true ? true : undefined)}
                 />
                 <span className="text-sm">In Stock Only</span>
               </label>
