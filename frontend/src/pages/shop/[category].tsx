@@ -1,146 +1,426 @@
-import type { GetServerSideProps } from "next";
+import { useState, useEffect, useCallback } from "react";
+import { useRouter } from "next/router";
 import Link from "next/link";
-import { useMemo } from "react";
-import { ArrowRight, Filter, Leaf } from "lucide-react";
-import { ShopLayout } from "@/components/shop/ShopLayout";
-import { Badge } from "@/components/ui/badge";
+import { GetServerSideProps } from "next";
+import { ChevronRight, SlidersHorizontal, Grid2X2, Grid3X3, LayoutGrid } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import {
-  PRODUCTS,
-  type ShopCategory,
-  getCategoryTitle,
-  formatMoney,
-} from "@/data/shopMock";
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { ShopLayout } from "@/components/shop/ShopLayout";
+import { ProductGrid, ProductGridSkeleton } from "@/components/shop/ProductGrid";
+import { FilterPanel, MobileFilterSheet, ActiveFilterPills } from "@/components/shop/FilterPanel";
+import { MOCK_PRODUCTS, MOCK_BRANDS, MOCK_COLORS, MOCK_SIZES } from "@/data/mockProducts";
+import type { Product, ProductFilters, SortOption } from "@/types/shop";
 
-function EcoPill({ text }: { text: string }) {
-  return (
-    <span className="inline-flex items-center rounded-full bg-accent px-2.5 py-1 text-[11px] font-semibold text-accent-foreground">
-      <Leaf className="mr-1 h-3 w-3" />
-      {text}
-    </span>
-  );
-}
-
-const validCategories: ShopCategory[] = ["women", "men", "kids", "others"];
-
-export const getServerSideProps: GetServerSideProps<{
-  category: ShopCategory;
-}> = async (ctx) => {
-  const raw = String(ctx.params?.category ?? "");
-  if (!validCategories.includes(raw as ShopCategory)) {
-    return { notFound: true };
-  }
-  return { props: { category: raw as ShopCategory } };
+// Category configuration
+const CATEGORY_CONFIG: Record<string, { title: string; description: string; subcategories: string[] }> = {
+  women: {
+    title: "Women",
+    description: "Discover bold African prints and modern silhouettes for every occasion.",
+    subcategories: ["Dresses", "Tops", "Bottoms", "Sets", "Outerwear"],
+  },
+  men: {
+    title: "Men",
+    description: "Contemporary African style meets streetwear sophistication.",
+    subcategories: ["Shirts", "T-Shirts", "Pants", "Sets", "Outerwear"],
+  },
+  kids: {
+    title: "Kids",
+    description: "Culture-ready styles for the little ones.",
+    subcategories: ["Girls", "Boys", "Baby", "Sets"],
+  },
+  accessories: {
+    title: "Accessories",
+    description: "Complete your look with bags, jewelry, and more.",
+    subcategories: ["Bags", "Jewelry", "Headwear", "Footwear"],
+  },
+  others: {
+    title: "Others",
+    description: "Discover unique finds and lifestyle pieces.",
+    subcategories: ["Home", "Beauty", "Gifts"],
+  },
 };
 
-export default function ShopCategoryPage({ category }: { category: ShopCategory }) {
-  const products = useMemo(
-    () => PRODUCTS.filter((p) => p.category === category),
-    [category],
-  );
+interface ShopCategoryPageProps {
+  category: string;
+  initialProducts: Product[];
+  totalCount: number;
+}
 
-  const title = getCategoryTitle(category);
+export default function ShopCategoryPage({
+  category,
+  initialProducts,
+  totalCount,
+}: ShopCategoryPageProps) {
+  const router = useRouter();
+  const config = CATEGORY_CONFIG[category] || CATEGORY_CONFIG.others;
+
+  // State
+  const [products, setProducts] = useState<Product[]>(initialProducts);
+  const [filters, setFilters] = useState<ProductFilters>({});
+  const [sort, setSort] = useState<SortOption>("popular");
+  const [gridColumns, setGridColumns] = useState<2 | 3 | 4>(4);
+  const [isLoading, setIsLoading] = useState(false);
+  const [hasMore, setHasMore] = useState(products.length < totalCount);
+  const [page, setPage] = useState(1);
+
+  // Filter products based on current filters
+  const filteredProducts = applyFilters(MOCK_PRODUCTS.filter(p =>
+    p.categoryPath[0] === category || category === "others"
+  ), filters);
+
+  // Sort products
+  const sortedProducts = sortProducts(filteredProducts, sort);
+
+  // Calculate available filter options
+  const availableFilters = {
+    colors: MOCK_COLORS,
+    sizes: MOCK_SIZES,
+    brands: MOCK_BRANDS,
+    priceRange: {
+      min: Math.min(...sortedProducts.map(p => p.price.amount), 0),
+      max: Math.max(...sortedProducts.map(p => p.price.amount), 100000),
+    },
+    ecoTags: ["MadeInAfrica", "SmallBatch", "ArtisanMade", "Recycled", "Organic", "Deadstock"] as const,
+  };
+
+  // Infinite scroll handler
+  const loadMore = useCallback(() => {
+    if (isLoading || !hasMore) return;
+    setIsLoading(true);
+    // Simulate API call
+    setTimeout(() => {
+      setPage(prev => prev + 1);
+      setIsLoading(false);
+    }, 500);
+  }, [isLoading, hasMore]);
+
+  // Intersection Observer for infinite scroll
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting) {
+          loadMore();
+        }
+      },
+      { threshold: 0.1 }
+    );
+
+    const sentinel = document.getElementById("load-more-sentinel");
+    if (sentinel) {
+      observer.observe(sentinel);
+    }
+
+    return () => observer.disconnect();
+  }, [loadMore]);
+
+  // Handle filter changes
+  const handleFiltersChange = (newFilters: ProductFilters) => {
+    setFilters(newFilters);
+    setPage(1);
+  };
+
+  // Handle sort changes
+  const handleSortChange = (value: string) => {
+    setSort(value as SortOption);
+    setPage(1);
+  };
 
   return (
     <ShopLayout>
-      <div className="border-b bg-white">
-        <div className="container px-4 py-10">
-          <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
-            <div className="space-y-2">
-              <Badge variant="secondary">Shop</Badge>
-              <h1 className="text-3xl font-extrabold tracking-tight">{title}</h1>
-              <p className="max-w-2xl text-sm text-muted-foreground">
-                Afrocentric fits curated for your timeline — with eco signals you can
-                actually filter by.
-              </p>
+      {/* Breadcrumb */}
+      <nav className="container px-4 py-3 text-sm">
+        <ol className="flex items-center gap-2 text-muted-foreground">
+          <li>
+            <Link href="/" className="hover:text-primary">Home</Link>
+          </li>
+          <ChevronRight className="h-4 w-4" />
+          <li className="font-medium text-foreground">{config.title}</li>
+        </ol>
+      </nav>
+
+      {/* Category Header */}
+      <header className="container px-4 pb-6">
+        <h1 className="text-3xl font-extrabold tracking-tight">{config.title}</h1>
+        <p className="text-muted-foreground mt-1">{config.description}</p>
+
+        {/* Subcategory Pills */}
+        <div className="flex flex-wrap gap-2 mt-4">
+          <Button
+            variant="secondary"
+            size="sm"
+            className="rounded-full"
+          >
+            All
+          </Button>
+          {config.subcategories.map((sub) => (
+            <Button
+              key={sub}
+              variant="outline"
+              size="sm"
+              className="rounded-full"
+            >
+              {sub}
+            </Button>
+          ))}
+        </div>
+      </header>
+
+      {/* Filter Bar */}
+      <div className="sticky top-16 z-30 bg-background border-y">
+        <div className="container px-4 py-3">
+          <div className="flex items-center justify-between gap-4">
+            {/* Left: Filter button (mobile) + Result count */}
+            <div className="flex items-center gap-3">
+              <div className="md:hidden">
+                <MobileFilterSheet
+                  filters={filters}
+                  onFiltersChange={handleFiltersChange}
+                  availableColors={availableFilters.colors}
+                  availableSizes={availableFilters.sizes}
+                  availableBrands={availableFilters.brands}
+                  availableEcoTags={[...availableFilters.ecoTags]}
+                  priceRange={availableFilters.priceRange}
+                  currencySymbol="₦"
+                  productCount={sortedProducts.length}
+                />
+              </div>
+              <span className="text-sm text-muted-foreground">
+                {sortedProducts.length} products
+              </span>
             </div>
 
-            <div className="flex flex-wrap gap-2">
-              <EcoPill text="Made in Africa" />
-              <EcoPill text="Small batch" />
-              <EcoPill text="Artisan made" />
+            {/* Right: Sort + Grid toggle */}
+            <div className="flex items-center gap-3">
+              <Select value={sort} onValueChange={handleSortChange}>
+                <SelectTrigger className="w-[160px] h-9">
+                  <SelectValue placeholder="Sort by" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="popular">Popular</SelectItem>
+                  <SelectItem value="newest">Newest</SelectItem>
+                  <SelectItem value="price_asc">Price: Low to High</SelectItem>
+                  <SelectItem value="price_desc">Price: High to Low</SelectItem>
+                  <SelectItem value="rating">Top Rated</SelectItem>
+                  <SelectItem value="bestselling">Best Selling</SelectItem>
+                </SelectContent>
+              </Select>
+
+              {/* Grid toggle (desktop only) */}
+              <div className="hidden md:flex items-center border rounded-md">
+                <button
+                  onClick={() => setGridColumns(2)}
+                  className={cn(
+                    "p-2 transition-colors",
+                    gridColumns === 2 ? "bg-muted" : "hover:bg-muted/50"
+                  )}
+                >
+                  <Grid2X2 className="h-4 w-4" />
+                </button>
+                <button
+                  onClick={() => setGridColumns(3)}
+                  className={cn(
+                    "p-2 transition-colors",
+                    gridColumns === 3 ? "bg-muted" : "hover:bg-muted/50"
+                  )}
+                >
+                  <Grid3X3 className="h-4 w-4" />
+                </button>
+                <button
+                  onClick={() => setGridColumns(4)}
+                  className={cn(
+                    "p-2 transition-colors",
+                    gridColumns === 4 ? "bg-muted" : "hover:bg-muted/50"
+                  )}
+                >
+                  <LayoutGrid className="h-4 w-4" />
+                </button>
+              </div>
             </div>
+          </div>
+
+          {/* Active Filters */}
+          <div className="mt-3">
+            <ActiveFilterPills
+              filters={filters}
+              onFiltersChange={handleFiltersChange}
+              availableColors={availableFilters.colors}
+              availableSizes={availableFilters.sizes}
+              availableBrands={availableFilters.brands}
+            />
           </div>
         </div>
       </div>
 
-      <div className="container px-4 py-10">
-        <div className="mb-6 flex items-center justify-between gap-4">
-          <div className="text-sm text-muted-foreground">
-            {products.length} items
-          </div>
-          <Button variant="outline" className="gap-2">
-            <Filter className="h-4 w-4" />
-            Filters
-          </Button>
-        </div>
+      {/* Main Content */}
+      <div className="container px-4 py-6">
+        <div className="flex gap-8">
+          {/* Sidebar Filters (Desktop) */}
+          <aside className="hidden md:block w-64 shrink-0">
+            <div className="sticky top-36">
+              <FilterPanel
+                filters={filters}
+                onFiltersChange={handleFiltersChange}
+                availableColors={availableFilters.colors}
+                availableSizes={availableFilters.sizes}
+                availableBrands={availableFilters.brands}
+                availableEcoTags={[...availableFilters.ecoTags]}
+                priceRange={availableFilters.priceRange}
+                currencySymbol="₦"
+              />
+            </div>
+          </aside>
 
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {products.map((p) => (
-            <Card
-              key={p.id}
-              className="group overflow-hidden rounded-2xl border bg-card shadow-card card-hover-effect hover:shadow-card-hover"
-            >
-              <div className="relative aspect-[4/5] w-full bg-muted">
-                <img
-                  src={p.imageUrl}
-                  alt={p.name}
-                  className="h-full w-full object-cover opacity-90 transition-opacity duration-300 group-hover:opacity-0"
-                />
-                {p.secondaryImageUrl && (
-                  <img
-                    src={p.secondaryImageUrl}
-                    alt={p.name}
-                    className="absolute inset-0 h-full w-full object-cover opacity-0 transition-opacity duration-300 group-hover:opacity-100"
-                  />
-                )}
-                <div className="absolute left-3 top-3 flex flex-col gap-1">
-                  {p.compareAtPrice && p.compareAtPrice > p.price && (
-                    <span className="rounded-full bg-primary px-2.5 py-1 text-[11px] font-semibold text-primary-foreground">
-                      Sale&nbsp;
-                      {`-${Math.round(
-                        ((p.compareAtPrice - p.price) / p.compareAtPrice) * 100,
-                      )}%`}
-                    </span>
-                  )}
-                </div>
+          {/* Product Grid */}
+          <main className="flex-1">
+            <ProductGrid
+              products={sortedProducts}
+              columns={gridColumns}
+              showQuickAdd={true}
+              showTryOn={true}
+            />
+
+            {/* Load More Sentinel */}
+            {hasMore && (
+              <div id="load-more-sentinel" className="py-8">
+                {isLoading && <ProductGridSkeleton count={4} />}
               </div>
+            )}
 
-              <div className="space-y-2 p-4">
-                <div className="text-xs text-muted-foreground">{p.brand.name}</div>
-                <div className="line-clamp-2 text-sm font-semibold">{p.name}</div>
-                <div className="text-xs text-muted-foreground">{p.caption}</div>
-
-                <div className="flex items-center gap-2">
-                  <div className="text-sm font-extrabold">
-                    {formatMoney(p.price, p.currency)}
-                  </div>
-                  {p.compareAtPrice ? (
-                    <div className="text-xs text-muted-foreground line-through">
-                      {formatMoney(p.compareAtPrice, p.currency)}
-                    </div>
-                  ) : null}
-                </div>
-
-                <div className="flex items-center justify-between pt-2">
-                  <Link
-                    href="/"
-                    className="inline-flex items-center text-xs font-semibold text-primary hover:underline"
-                  >
-                    Try it on
-                    <ArrowRight className="ml-1 h-3 w-3" />
-                  </Link>
-                  <Button size="sm" variant="outline">
-                    Add
-                  </Button>
-                </div>
+            {/* No Results */}
+            {sortedProducts.length === 0 && (
+              <div className="text-center py-16">
+                <p className="text-lg font-medium">No products found</p>
+                <p className="text-muted-foreground mt-1">
+                  Try adjusting your filters to find what you're looking for.
+                </p>
+                <Button
+                  variant="outline"
+                  className="mt-4"
+                  onClick={() => setFilters({})}
+                >
+                  Clear all filters
+                </Button>
               </div>
-            </Card>
-          ))}
+            )}
+          </main>
         </div>
       </div>
     </ShopLayout>
   );
 }
 
+// Server-side props
+export const getServerSideProps: GetServerSideProps = async ({ params }) => {
+  const category = params?.category as string;
+
+  // Validate category
+  const validCategories = ["women", "men", "kids", "accessories", "others"];
+  if (!validCategories.includes(category)) {
+    return { notFound: true };
+  }
+
+  // Filter products by category
+  const categoryProducts = MOCK_PRODUCTS.filter(
+    (p) => p.categoryPath[0] === category || (category === "others" && !["women", "men", "kids", "accessories"].includes(p.categoryPath[0]))
+  );
+
+  return {
+    props: {
+      category,
+      initialProducts: categoryProducts,
+      totalCount: categoryProducts.length,
+    },
+  };
+};
+
+// Helper: Apply filters to products
+function applyFilters(products: Product[], filters: ProductFilters): Product[] {
+  return products.filter((product) => {
+    // Size filter
+    if (filters.sizes?.length) {
+      const hasMatchingSize = product.sizes.some((s) => filters.sizes!.includes(s.id));
+      if (!hasMatchingSize) return false;
+    }
+
+    // Color filter
+    if (filters.colors?.length) {
+      const hasMatchingColor = product.colors.some((c) => filters.colors!.includes(c.id));
+      if (!hasMatchingColor) return false;
+    }
+
+    // Brand filter
+    if (filters.brands?.length) {
+      if (!filters.brands.includes(product.brandId)) return false;
+    }
+
+    // Price filter
+    if (filters.priceMin !== undefined && product.price.amount < filters.priceMin) {
+      return false;
+    }
+    if (filters.priceMax !== undefined && product.price.amount > filters.priceMax) {
+      return false;
+    }
+
+    // Eco tags filter
+    if (filters.ecoTags?.length) {
+      const hasMatchingTag = product.ecoTags.some((t) => filters.ecoTags!.includes(t));
+      if (!hasMatchingTag) return false;
+    }
+
+    // Virtual try-on filter
+    if (filters.hasVirtualTryOn && !product.virtualTryOn.isEnabled) {
+      return false;
+    }
+
+    // On sale filter
+    if (filters.isOnSale && !product.compareAtPrice) {
+      return false;
+    }
+
+    // New arrivals filter
+    if (filters.isNew && !product.isNew) {
+      return false;
+    }
+
+    // In stock filter
+    if (filters.inStock === false) {
+      // This means show out of stock only
+    } else if (filters.inStock !== undefined && product.totalInventory <= 0) {
+      return false;
+    }
+
+    return true;
+  });
+}
+
+// Helper: Sort products
+function sortProducts(products: Product[], sort: SortOption): Product[] {
+  const sorted = [...products];
+
+  switch (sort) {
+    case "popular":
+      return sorted.sort((a, b) => b.viewCount - a.viewCount);
+    case "newest":
+      return sorted.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    case "price_asc":
+      return sorted.sort((a, b) => a.price.amount - b.price.amount);
+    case "price_desc":
+      return sorted.sort((a, b) => b.price.amount - a.price.amount);
+    case "rating":
+      return sorted.sort((a, b) => b.ratings.averageRating - a.ratings.averageRating);
+    case "bestselling":
+      return sorted.sort((a, b) => b.salesCount - a.salesCount);
+    case "most_reviewed":
+      return sorted.sort((a, b) => b.ratings.totalReviews - a.ratings.totalReviews);
+    default:
+      return sorted;
+  }
+}
