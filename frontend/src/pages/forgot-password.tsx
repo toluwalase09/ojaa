@@ -3,21 +3,57 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Mail, ArrowLeft, CheckCircle } from 'lucide-react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Mail, ArrowLeft, CheckCircle, AlertCircle, Loader2 } from 'lucide-react';
 import Link from 'next/link';
+import { useAuth } from '@/context/AuthContext';
 
 const ForgotPassword = () => {
   const [email, setEmail] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
+  const [error, setError] = useState('');
+
+  const { forgotPassword } = useAuth();
+
+  const validateEmail = (email: string) => {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError('');
+
+    if (!email) {
+      setError('Please enter your email address');
+      return;
+    }
+
+    if (!validateEmail(email)) {
+      setError('Please enter a valid email address');
+      return;
+    }
+
     setIsLoading(true);
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    setIsLoading(false);
-    setIsSubmitted(true);
+
+    try {
+      const result = await forgotPassword(email);
+      if (result.success) {
+        setIsSubmitted(true);
+      } else {
+        setError(result.message || 'Failed to send reset email. Please try again.');
+      }
+    } catch (error: any) {
+      setError('An error occurred. Please try again.');
+      console.error('Forgot password error:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleResend = () => {
+    setIsSubmitted(false);
+    setError('');
   };
 
   if (isSubmitted) {
@@ -36,24 +72,29 @@ const ForgotPassword = () => {
           <Card className="shadow-xl border-0">
             <CardContent className="pt-8 pb-8">
               <div className="text-center">
-                <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4 animate-in zoom-in">
                   <CheckCircle className="h-8 w-8 text-green-600" />
                 </div>
                 <h1 className="text-2xl font-bold text-gray-900 mb-2">Check your email</h1>
                 <p className="text-gray-600 mb-6">
-                  We've sent a password reset link to <strong>{email}</strong>
+                  We've sent a password reset link to <strong className="text-gray-900">{email}</strong>
                 </p>
+                <div className="bg-gray-50 rounded-lg p-4 mb-6">
+                  <p className="text-sm text-gray-600">
+                    The link will expire in <strong>1 hour</strong>. If you don't see the email, check your spam folder.
+                  </p>
+                </div>
                 <p className="text-sm text-gray-500 mb-6">
-                  Didn't receive the email? Check your spam folder or{' '}
-                  <button 
-                    onClick={() => setIsSubmitted(false)}
-                    className="text-blue-600 hover:text-blue-500 font-medium"
+                  Didn't receive the email?{' '}
+                  <button
+                    onClick={handleResend}
+                    className="text-blue-600 hover:text-blue-500 font-medium transition-colors"
                   >
-                    try again
+                    Try again
                   </button>
                 </p>
                 <Link href="/signin">
-                  <Button className="w-full">
+                  <Button className="w-full h-12 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700">
                     Back to Sign In
                   </Button>
                 </Link>
@@ -94,6 +135,13 @@ const ForgotPassword = () => {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
+            {error && (
+              <Alert variant="destructive" className="animate-in fade-in slide-in-from-top-1">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>{error}</AlertDescription>
+              </Alert>
+            )}
+
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="email">Email</Label>
@@ -105,9 +153,14 @@ const ForgotPassword = () => {
                     type="email"
                     placeholder="Enter your email"
                     value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    className="pl-10 h-12"
-                    required
+                    onChange={(e) => {
+                      setEmail(e.target.value);
+                      if (error) setError('');
+                    }}
+                    className="pl-10 h-12 transition-all focus:ring-2 focus:ring-blue-500"
+                    disabled={isLoading}
+                    autoComplete="email"
+                    autoFocus
                   />
                 </div>
               </div>
@@ -115,16 +168,23 @@ const ForgotPassword = () => {
               <Button
                 type="submit"
                 disabled={isLoading}
-                className="w-full h-12 text-base font-medium bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
+                className="w-full h-12 text-base font-medium bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 transition-all transform hover:scale-[1.02] active:scale-[0.98]"
               >
-                {isLoading ? 'Sending...' : 'Send Reset Link'}
+                {isLoading ? (
+                  <>
+                    <Loader2 className="h-5 w-5 animate-spin mr-2" />
+                    Sending...
+                  </>
+                ) : (
+                  'Send Reset Link'
+                )}
               </Button>
             </form>
 
             <div className="text-center">
               <p className="text-sm text-gray-600">
                 Remember your password?{' '}
-                <Link href="/signin" className="text-blue-600 hover:text-blue-500 font-medium">
+                <Link href="/signin" className="text-blue-600 hover:text-blue-500 font-medium transition-colors">
                   Sign in
                 </Link>
               </p>
@@ -134,7 +194,12 @@ const ForgotPassword = () => {
 
         {/* Footer */}
         <div className="mt-8 text-center text-sm text-gray-500">
-          <p>Need help? Contact our support team</p>
+          <p>
+            Need help?{' '}
+            <Link href="/contact" className="text-blue-600 hover:underline">
+              Contact our support team
+            </Link>
+          </p>
         </div>
       </div>
     </div>

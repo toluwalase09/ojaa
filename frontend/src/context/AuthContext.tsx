@@ -32,10 +32,14 @@ interface AuthContextType {
   user: User | null;
   loading: boolean;
   login: (email: string, password: string) => Promise<{ success: boolean; message: string }>;
+  loginWithGoogle: () => Promise<void>;
+  handleGoogleCallback: (code: string) => Promise<{ success: boolean; message: string }>;
   register: (userData: RegisterData) => Promise<{ success: boolean; message: string }>;
   logout: () => void;
   updateProfile: (profileData: Partial<User>) => Promise<{ success: boolean; message: string }>;
   changePassword: (currentPassword: string, newPassword: string) => Promise<{ success: boolean; message: string }>;
+  forgotPassword: (email: string) => Promise<{ success: boolean; message: string }>;
+  resetPassword: (token: string, password: string, passwordConfirmation: string) => Promise<{ success: boolean; message: string }>;
   uploadProfilePicture: (file: File) => Promise<{ success: boolean; message: string; profile_picture?: string }>;
 }
 
@@ -57,10 +61,14 @@ export const useAuth = () => {
         user: null,
         loading: false,
         login: async () => ({ success: false, message: 'Authentication context not available' }),
+        loginWithGoogle: async () => {},
+        handleGoogleCallback: async () => ({ success: false, message: 'Authentication context not available' }),
         register: async () => ({ success: false, message: 'Authentication context not available' }),
         logout: () => {},
         updateProfile: async () => ({ success: false, message: 'Authentication context not available' }),
         changePassword: async () => ({ success: false, message: 'Authentication context not available' }),
+        forgotPassword: async () => ({ success: false, message: 'Authentication context not available' }),
+        resetPassword: async () => ({ success: false, message: 'Authentication context not available' }),
         uploadProfilePicture: async () => ({ success: false, message: 'Authentication context not available' })
       };
   }
@@ -126,6 +134,32 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
+  const loginWithGoogle = async () => {
+    try {
+      await apiService.loginWithGoogle();
+    } catch (error) {
+      console.error('Google login error:', error);
+    }
+  };
+
+  const handleGoogleCallback = async (code: string) => {
+    try {
+      setLoading(true);
+      const response = await apiService.handleGoogleCallback(code);
+      if (response.data && response.data.user) {
+        setUser(response.data.user);
+        return { success: true, message: 'Google login successful' };
+      } else {
+        return { success: false, message: 'Google login failed' };
+      }
+    } catch (error: any) {
+      console.error('Google callback error:', error);
+      return { success: false, message: error.message || 'Google login failed' };
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const register = async (userData: RegisterData) => {
     try {
       setLoading(true);
@@ -185,6 +219,30 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
+  const forgotPassword = async (email: string) => {
+    try {
+      setLoading(true);
+      await apiService.forgotPassword(email);
+      return { success: true, message: 'Password reset email sent' };
+    } catch (error: any) {
+      return { success: false, message: error.message || 'Failed to send reset email' };
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const resetPassword = async (token: string, password: string, passwordConfirmation: string) => {
+    try {
+      setLoading(true);
+      await apiService.resetPassword(token, password, passwordConfirmation);
+      return { success: true, message: 'Password reset successfully' };
+    } catch (error: any) {
+      return { success: false, message: error.message || 'Password reset failed' };
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const uploadProfilePicture = async (file: File) => {
     try {
       setLoading(true);
@@ -211,10 +269,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     user,
     loading,
     login,
+    loginWithGoogle,
+    handleGoogleCallback,
     register,
     logout,
     updateProfile,
     changePassword,
+    forgotPassword,
+    resetPassword,
     uploadProfilePicture
   };
 

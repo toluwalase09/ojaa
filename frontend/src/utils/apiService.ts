@@ -280,6 +280,45 @@ class ApiService {
     });
   }
 
+  // Google OAuth - initiates redirect to Google
+  async loginWithGoogle(): Promise<void> {
+    window.location.href = `${this.baseURL}/api/auth/google`;
+  }
+
+  // Handle Google OAuth callback
+  async handleGoogleCallback(code: string): Promise<ApiResponse<any>> {
+    const response = await this.request<any>('/api/auth/google/callback', {
+      method: 'POST',
+      body: JSON.stringify({ code }),
+    });
+
+    if (response.data?.access_token) {
+      this.setToken(response.data.access_token);
+    }
+
+    return response;
+  }
+
+  // Forgot Password - send reset email
+  async forgotPassword(email: string): Promise<ApiResponse<{ message: string }>> {
+    return this.request<{ message: string }>('/api/auth/forgot-password', {
+      method: 'POST',
+      body: JSON.stringify({ email }),
+    });
+  }
+
+  // Reset Password - set new password with token
+  async resetPassword(token: string, password: string, passwordConfirmation: string): Promise<ApiResponse<{ message: string }>> {
+    return this.request<{ message: string }>('/api/auth/reset-password', {
+      method: 'POST',
+      body: JSON.stringify({
+        token,
+        password,
+        password_confirmation: passwordConfirmation
+      }),
+    });
+  }
+
   async uploadProfilePicture(file: File): Promise<ApiResponse<any>> {
     const formData = new FormData();
     formData.append('file', file);
