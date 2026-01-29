@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Search, ShoppingBag, Sparkles } from "lucide-react";
+import { Search, ShoppingBag, Sparkles, User } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -61,6 +61,7 @@ export function ShopNavbar({ className }: ShopNavbarProps) {
         </div>
 
         <div className="flex items-center gap-2">
+          {/* Desktop Sign in button */}
           <Link href="/signin">
             <Button
               variant="outline"
@@ -70,9 +71,15 @@ export function ShopNavbar({ className }: ShopNavbarProps) {
               Sign in
             </Button>
           </Link>
+          {/* Mobile Sign in button (icon only) */}
+          <Link href="/signin" className="md:hidden">
+            <Button variant="ghost" size="icon" className="h-9 w-9">
+              <User className="h-5 w-5" />
+            </Button>
+          </Link>
           <Button size="sm" className="gap-2">
             <ShoppingBag className="h-4 w-4" />
-            Cart
+            <span className="hidden sm:inline">Cart</span>
           </Button>
         </div>
       </div>
