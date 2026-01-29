@@ -61,20 +61,12 @@ export function ShopNavbar({ className }: ShopNavbarProps) {
         </div>
 
         <div className="flex items-center gap-2">
-          {/* Desktop Sign in button */}
           <Link href="/signin">
             <Button
               variant="outline"
               size="sm"
-              className="hidden md:inline-flex"
             >
               Sign in
-            </Button>
-          </Link>
-          {/* Mobile Sign in button (icon only) */}
-          <Link href="/signin" className="md:hidden">
-            <Button variant="ghost" size="icon" className="h-9 w-9">
-              <User className="h-5 w-5" />
             </Button>
           </Link>
           <Button size="sm" className="gap-2">
