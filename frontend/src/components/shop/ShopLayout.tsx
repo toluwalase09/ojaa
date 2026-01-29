@@ -1,5 +1,4 @@
 import type { ReactNode } from "react";
-import { ShopNavbar } from "./ShopNavbar";
 
 interface ShopLayoutProps {
   children: ReactNode;
@@ -8,7 +7,6 @@ interface ShopLayoutProps {
 export function ShopLayout({ children }: ShopLayoutProps) {
   return (
     <div className="min-h-screen bg-background text-foreground">
-      <ShopNavbar />
       <main>{children}</main>
     </div>
   );
