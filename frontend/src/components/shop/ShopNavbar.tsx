@@ -61,13 +61,15 @@ export function ShopNavbar({ className }: ShopNavbarProps) {
         </div>
 
         <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            className="hidden md:inline-flex"
-          >
-            Sign in
-          </Button>
+          <Link href="/signin">
+            <Button
+              variant="outline"
+              size="sm"
+              className="hidden md:inline-flex"
+            >
+              Sign in
+            </Button>
+          </Link>
           <Button size="sm" className="gap-2">
             <ShoppingBag className="h-4 w-4" />
             Cart
