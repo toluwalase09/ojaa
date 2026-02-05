@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import type { CartItem, Product, ProductColor, ProductSize } from '@/types/shop';
+import type { CartItem, Product, ProductColor, ProductSize, Currency } from '@/types/shop';
 
 export interface CartItemWithProduct extends CartItem {
   product: Product;
@@ -11,7 +11,7 @@ interface CartContextType {
   items: CartItemWithProduct[];
   itemCount: number;
   subtotal: number;
-  currency: string;
+  currency: Currency;
   addItem: (product: Product, color: ProductColor, size: ProductSize, quantity?: number) => void;
   removeItem: (itemId: string) => void;
   updateQuantity: (itemId: string, quantity: number) => void;
@@ -171,7 +171,7 @@ export function useCart() {
       items: [],
       itemCount: 0,
       subtotal: 0,
-      currency: 'NGN',
+      currency: 'NGN' as Currency,
       addItem: () => {},
       removeItem: () => {},
       updateQuantity: () => {},
