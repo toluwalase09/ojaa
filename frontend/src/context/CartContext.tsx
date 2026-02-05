@@ -96,7 +96,7 @@ export function CartProvider({ children }: CartProviderProps) {
         productId: product.id,
         variantId: `${product.id}_${color.id}_${size.id}`,
         quantity,
-        price: product.salePrice || product.price,
+        price: product.price,
         product,
         selectedColor: color,
         selectedSize: size,
