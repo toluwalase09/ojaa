@@ -1,14 +1,18 @@
 import Link from "next/link";
-import { Search, ShoppingBag, Sparkles, User } from "lucide-react";
+import { Search, ShoppingBag, Sparkles } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
+import { useCart } from "@/context/CartContext";
 
 interface ShopNavbarProps {
   className?: string;
 }
 
 export function ShopNavbar({ className }: ShopNavbarProps) {
+  const { itemCount } = useCart();
+
   return (
     <header
       className={cn(
@@ -69,10 +73,19 @@ export function ShopNavbar({ className }: ShopNavbarProps) {
               Sign in
             </Button>
           </Link>
-          <Button size="sm" className="gap-2">
-            <ShoppingBag className="h-4 w-4" />
-            <span className="hidden sm:inline">Cart</span>
-          </Button>
+          <Link href="/cart">
+            <Button size="sm" className="gap-2 relative">
+              <ShoppingBag className="h-4 w-4" />
+              <span className="hidden sm:inline">Cart</span>
+              {itemCount > 0 && (
+                <Badge
+                  className="absolute -top-2 -right-2 h-5 w-5 flex items-center justify-center p-0 text-[10px] bg-primary text-primary-foreground"
+                >
+                  {itemCount > 99 ? '99+' : itemCount}
+                </Badge>
+              )}
+            </Button>
+          </Link>
         </div>
       </div>
 

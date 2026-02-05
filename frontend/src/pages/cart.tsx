@@ -1,7 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
-import { ShoppingBag, Trash2, Minus, Plus, Heart, ArrowRight, Tag, Truck, ChevronRight } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { ShoppingBag, Trash2, Minus, Plus, Heart, ArrowRight, Tag, Truck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -10,64 +9,43 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { ShopLayout } from "@/components/shop/ShopLayout";
 import { ProductGrid } from "@/components/shop/ProductGrid";
 import { MOCK_PRODUCTS } from "@/data/mockProducts";
-import type { CartItem, Product } from "@/types/shop";
+import { useCart } from "@/context/CartContext";
 import { formatMoney } from "@/types/shop";
 
-// Mock cart data
-const MOCK_CART_ITEMS: (CartItem & { product: Product })[] = [
-  {
-    id: "ci1",
-    productId: "p1",
-    variantId: "v1",
-    quantity: 1,
-    price: { amount: 28500, currency: "NGN" },
-    product: MOCK_PRODUCTS[0],
-    selectedColor: MOCK_PRODUCTS[0].colors[0],
-    selectedSize: MOCK_PRODUCTS[0].sizes[2], // M
-    addedAt: new Date().toISOString(),
-  },
-  {
-    id: "ci2",
-    productId: "p2",
-    variantId: "v2",
-    quantity: 2,
-    price: { amount: 19000, currency: "NGN" },
-    product: MOCK_PRODUCTS[1],
-    selectedColor: MOCK_PRODUCTS[1].colors[0],
-    selectedSize: MOCK_PRODUCTS[1].sizes[1], // S
-    addedAt: new Date().toISOString(),
-  },
-];
-
 export default function CartPage() {
-  const [cartItems, setCartItems] = useState(MOCK_CART_ITEMS);
-  const [selectedItems, setSelectedItems] = useState<string[]>(cartItems.map((i) => i.id));
+  const { items: cartItems, removeItem, updateQuantity, currency } = useCart();
+  const [selectedItems, setSelectedItems] = useState<string[]>([]);
   const [promoCode, setPromoCode] = useState("");
   const [promoApplied, setPromoApplied] = useState(false);
 
+  // Initialize selected items when cart loads
+  useEffect(() => {
+    if (cartItems.length > 0) {
+      setSelectedItems(cartItems.map((i) => i.id));
+    }
+  }, [cartItems]);
+
   const freeShippingThreshold = 15000;
-  const subtotal = cartItems
+  const selectedSubtotal = cartItems
     .filter((item) => selectedItems.includes(item.id))
     .reduce((sum, item) => sum + item.price.amount * item.quantity, 0);
-  const shipping = subtotal >= freeShippingThreshold ? 0 : 2500;
-  const discount = promoApplied ? Math.round(subtotal * 0.1) : 0;
-  const total = subtotal - discount + shipping;
+  const shipping = selectedSubtotal >= freeShippingThreshold ? 0 : 2500;
+  const discount = promoApplied ? Math.round(selectedSubtotal * 0.1) : 0;
+  const total = selectedSubtotal - discount + shipping;
 
-  const progressToFreeShipping = Math.min((subtotal / freeShippingThreshold) * 100, 100);
-  const amountToFreeShipping = Math.max(freeShippingThreshold - subtotal, 0);
+  const progressToFreeShipping = Math.min((selectedSubtotal / freeShippingThreshold) * 100, 100);
+  const amountToFreeShipping = Math.max(freeShippingThreshold - selectedSubtotal, 0);
 
-  const updateQuantity = (itemId: string, delta: number) => {
-    setCartItems((items) =>
-      items.map((item) =>
-        item.id === itemId
-          ? { ...item, quantity: Math.max(1, item.quantity + delta) }
-          : item
-      )
-    );
+  const handleUpdateQuantity = (itemId: string, delta: number) => {
+    const item = cartItems.find((i) => i.id === itemId);
+    if (item) {
+      const newQuantity = Math.max(1, item.quantity + delta);
+      updateQuantity(itemId, newQuantity);
+    }
   };
 
-  const removeItem = (itemId: string) => {
-    setCartItems((items) => items.filter((item) => item.id !== itemId));
+  const handleRemoveItem = (itemId: string) => {
+    removeItem(itemId);
     setSelectedItems((selected) => selected.filter((id) => id !== itemId));
   };
 
@@ -105,6 +83,12 @@ export default function CartPage() {
           <Link href="/">
             <Button size="lg">Start Shopping</Button>
           </Link>
+
+          {/* Recommended Products */}
+          <section className="mt-16 text-left">
+            <h2 className="text-2xl font-extrabold tracking-tight mb-6">Popular Products</h2>
+            <ProductGrid products={MOCK_PRODUCTS.slice(0, 4)} columns={4} />
+          </section>
         </div>
       </ShopLayout>
     );
@@ -114,16 +98,16 @@ export default function CartPage() {
     <ShopLayout>
       <div className="container px-4 py-8">
         <h1 className="text-3xl font-extrabold tracking-tight mb-8">
-          Shopping Cart ({cartItems.length} items)
+          Shopping Cart ({cartItems.length} {cartItems.length === 1 ? 'item' : 'items'})
         </h1>
 
         {/* Free Shipping Progress */}
-        {subtotal < freeShippingThreshold && (
+        {selectedSubtotal < freeShippingThreshold && selectedSubtotal > 0 && (
           <div className="mb-6 p-4 rounded-lg bg-accent/50 border">
             <div className="flex items-center gap-2 mb-2">
               <Truck className="h-4 w-4 text-primary" />
               <span className="text-sm font-medium">
-                Add {formatMoney({ amount: amountToFreeShipping, currency: "NGN" })} more for FREE shipping!
+                Add {formatMoney({ amount: amountToFreeShipping, currency: currency })} more for FREE shipping!
               </span>
             </div>
             <div className="h-2 rounded-full bg-muted overflow-hidden">
@@ -135,13 +119,24 @@ export default function CartPage() {
           </div>
         )}
 
+        {selectedSubtotal >= freeShippingThreshold && (
+          <div className="mb-6 p-4 rounded-lg bg-green-50 border border-green-200">
+            <div className="flex items-center gap-2">
+              <Truck className="h-4 w-4 text-green-600" />
+              <span className="text-sm font-medium text-green-700">
+                You've unlocked FREE shipping!
+              </span>
+            </div>
+          </div>
+        )}
+
         <div className="grid lg:grid-cols-3 gap-8">
           {/* Cart Items */}
           <div className="lg:col-span-2 space-y-4">
             {/* Select All */}
             <div className="flex items-center gap-3 p-4 bg-muted/50 rounded-lg">
               <Checkbox
-                checked={selectedItems.length === cartItems.length}
+                checked={selectedItems.length === cartItems.length && cartItems.length > 0}
                 onCheckedChange={toggleSelectAll}
               />
               <span className="text-sm font-medium">Select All ({cartItems.length} items)</span>
@@ -188,7 +183,7 @@ export default function CartPage() {
                     <div className="flex items-center justify-between mt-4">
                       <div className="flex items-center border rounded-lg">
                         <button
-                          onClick={() => updateQuantity(item.id, -1)}
+                          onClick={() => handleUpdateQuantity(item.id, -1)}
                           className="p-2 hover:bg-muted transition-colors"
                           disabled={item.quantity <= 1}
                         >
@@ -196,7 +191,7 @@ export default function CartPage() {
                         </button>
                         <span className="w-10 text-center font-medium">{item.quantity}</span>
                         <button
-                          onClick={() => updateQuantity(item.id, 1)}
+                          onClick={() => handleUpdateQuantity(item.id, 1)}
                           className="p-2 hover:bg-muted transition-colors"
                         >
                           <Plus className="h-4 w-4" />
@@ -219,19 +214,22 @@ export default function CartPage() {
                     <div className="flex items-center gap-4 mt-4 pt-4 border-t">
                       <button className="flex items-center gap-1 text-sm text-muted-foreground hover:text-primary">
                         <Heart className="h-4 w-4" />
-                        Save for Later
+                        <span className="hidden sm:inline">Save for Later</span>
                       </button>
                       <button
-                        onClick={() => removeItem(item.id)}
+                        onClick={() => handleRemoveItem(item.id)}
                         className="flex items-center gap-1 text-sm text-muted-foreground hover:text-destructive"
                       >
                         <Trash2 className="h-4 w-4" />
-                        Remove
+                        <span className="hidden sm:inline">Remove</span>
                       </button>
-                      {item.product.virtualTryOn.isEnabled && (
-                        <button className="flex items-center gap-1 text-sm text-primary hover:underline">
+                      {item.product.virtualTryOn?.isEnabled && (
+                        <Link
+                          href={`/try-on?product=${item.product.id}`}
+                          className="flex items-center gap-1 text-sm text-primary hover:underline"
+                        >
                           Try Again
-                        </button>
+                        </Link>
                       )}
                     </div>
                   </div>
@@ -275,38 +273,51 @@ export default function CartPage() {
                     <span>10% off applied!</span>
                   </div>
                 )}
+                <p className="text-xs text-muted-foreground mt-2">
+                  Try "WELCOME10" for 10% off your first order
+                </p>
               </div>
 
               {/* Totals */}
               <div className="space-y-3 text-sm">
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Subtotal ({selectedItems.length} items)</span>
-                  <span>{formatMoney({ amount: subtotal, currency: "NGN" })}</span>
+                  <span>{formatMoney({ amount: selectedSubtotal, currency: currency })}</span>
                 </div>
                 {discount > 0 && (
                   <div className="flex justify-between text-green-600">
                     <span>Discount</span>
-                    <span>-{formatMoney({ amount: discount, currency: "NGN" })}</span>
+                    <span>-{formatMoney({ amount: discount, currency: currency })}</span>
                   </div>
                 )}
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Shipping</span>
                   <span className={shipping === 0 ? "text-green-600 font-medium" : ""}>
-                    {shipping === 0 ? "FREE" : formatMoney({ amount: shipping, currency: "NGN" })}
+                    {shipping === 0 ? "FREE" : formatMoney({ amount: shipping, currency: currency })}
                   </span>
                 </div>
                 <div className="pt-3 border-t flex justify-between text-lg font-bold">
                   <span>Total</span>
-                  <span>{formatMoney({ amount: total, currency: "NGN" })}</span>
+                  <span>{formatMoney({ amount: total, currency: currency })}</span>
                 </div>
               </div>
 
               <Link href="/checkout">
-                <Button size="lg" className="w-full mt-6 gap-2">
+                <Button
+                  size="lg"
+                  className="w-full mt-6 gap-2"
+                  disabled={selectedItems.length === 0}
+                >
                   Proceed to Checkout
                   <ArrowRight className="h-4 w-4" />
                 </Button>
               </Link>
+
+              {selectedItems.length === 0 && (
+                <p className="text-xs text-center text-muted-foreground mt-2">
+                  Select items to proceed to checkout
+                </p>
+              )}
 
               {/* Trust Badges */}
               <div className="flex items-center justify-center gap-4 mt-6 text-xs text-muted-foreground">
